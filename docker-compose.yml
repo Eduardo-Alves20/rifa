@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sf-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sorteio
+      POSTGRES_PASSWORD: sorteio
+      POSTGRES_DB: sorteiofacil
+    # Host 5433 -> container 5432 (evita conflito com Postgres local na 5432).
+    # O backend acessa o banco pela rede interna (db:5432), não por esta porta.
+    ports:
+      - "5433:5432"
+    volumes:
+      - sf-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sorteio -d sorteiofacil"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: sf-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: "4000"
+      DATABASE_URL: "postgresql://sorteio:sorteio@db:5432/sorteiofacil?schema=public"
+      JWT_SECRET: "dev-jwt-secret-troque-em-producao-0123456789abcdef0123456789abcdef"
+      JWT_ACCESS_EXPIRES: "15m"
+      JWT_REFRESH_EXPIRES: "30d"
+      HMAC_SECRET: "dev-hmac-secret-troque-em-producao-abcdef0123456789abcdef0123456789"
+      FRONTEND_URL: "http://localhost:3000"
+      ADMIN_EMAIL: "admin@sorteiofacil.com"
+      ADMIN_PASSWORD: "trocar123"
+      ADMIN_NOME: "Administrador"
+      ADMIN_CPF: "00000000000"
+      ADMIN_USUARIO: "admin"
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build: ./frontend
+    container_name: sf-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: development
+      # O rewrite do Next (server-side) encaminha /api/* para o backend na rede do compose
+      NEXT_PUBLIC_API_URL: "http://backend:4000"
+    ports:
+      - "3000:3000"
+
+volumes:
+  sf-db-data:

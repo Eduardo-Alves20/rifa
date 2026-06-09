@@ -1,0 +1,188 @@
+// SorteioFácil - Schema do banco
+// Baseado no documento de requisitos v1.0
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  colaborador
+  participante
+}
+
+enum RaffleStatus {
+  ativo
+  aguardando_sorteio
+  sorteado
+  cancelado
+}
+
+enum Animacao {
+  tambor
+  caca_niquel
+}
+
+enum CouponStatus {
+  pendente
+  resgatado
+  expirado
+}
+
+model Loja {
+  id          String   @id @default(uuid()) @db.Uuid
+  nome        String   @db.VarChar(120)
+  endereco    String?  @db.VarChar(200)
+  ativo       Boolean  @default(true)
+  criadoEm    DateTime @default(now()) @db.Timestamptz()
+  atualizadoEm DateTime @updatedAt @db.Timestamptz()
+
+  colaboradores User[]    @relation("UserLoja")
+  rafflesLojas  RaffleLoja[]
+
+  @@map("lojas")
+}
+
+model User {
+  id              String   @id @default(uuid()) @db.Uuid
+  nome            String   @db.VarChar(120)
+  cpf             String   @unique @db.VarChar(11)
+  usuario         String?  @unique @db.VarChar(40)
+  celular         String   @db.VarChar(15)
+  dataNasc        DateTime @db.Date
+  email           String?  @unique @db.VarChar(180)
+  senhaHash       String   @db.VarChar(255)
+  role            Role
+  primeiroAcesso  Boolean  @default(true)
+  ativo           Boolean  @default(true)
+
+  lojaId          String?  @db.Uuid
+  loja            Loja?    @relation("UserLoja", fields: [lojaId], references: [id])
+
+  criadoPorId     String?  @db.Uuid
+  criadoPor       User?    @relation("UserCriadoPor", fields: [criadoPorId], references: [id])
+  criados         User[]   @relation("UserCriadoPor")
+
+  criadoEm        DateTime @default(now()) @db.Timestamptz()
+  atualizadoEm    DateTime @updatedAt @db.Timestamptz()
+
+  // Relações
+  cuponsComoParticipante   Coupon[]    @relation("CouponParticipante")
+  cuponsComoColaborador    Coupon[]    @relation("CouponColaborador")
+  entries                  Entry[]
+  rafflesCriados           Raffle[]    @relation("RaffleCriadoPor")
+  rafflesGanhos            Raffle[]    @relation("RaffleGanhador")
+  tentativasLogin          LoginAttempt[]
+
+  @@index([cpf])
+  @@index([role])
+  @@map("users")
+}
+
+model Raffle {
+  id                   String        @id @default(uuid()) @db.Uuid
+  nome                 String        @db.VarChar(60)
+  slug                 String        @unique @db.VarChar(80)
+  premio               String        @db.VarChar(120)
+  premioValorCentavos  Int?
+  valorNumeroCentavos  Int?
+  totalNumeros         Int
+  dataHoraSorteio      DateTime      @db.Timestamptz()
+  prazoResgate         DateTime      @db.Timestamptz()
+  status               RaffleStatus  @default(ativo)
+  animacao             Animacao
+  imagemUrl            String?       @db.Text
+
+  ganhadorId           String?       @db.Uuid
+  ganhador             User?         @relation("RaffleGanhador", fields: [ganhadorId], references: [id])
+  numeroVencedor       Int?
+  sorteadoEm           DateTime?     @db.Timestamptz()
+  sorteadoPorIp        String?       @db.VarChar(45)
+
+  criadoPorId          String        @db.Uuid
+  criadoPor            User          @relation("RaffleCriadoPor", fields: [criadoPorId], references: [id])
+  criadoEm             DateTime      @default(now()) @db.Timestamptz()
+  atualizadoEm         DateTime      @updatedAt @db.Timestamptz()
+
+  coupons              Coupon[]
+  entries              Entry[]
+  lojas                RaffleLoja[]
+
+  @@index([status])
+  @@index([slug])
+  @@map("raffles")
+}
+
+// Tabela de junção: quais lojas podem gerar cupons para um sorteio
+model RaffleLoja {
+  raffleId String @db.Uuid
+  raffle   Raffle @relation(fields: [raffleId], references: [id], onDelete: Cascade)
+  lojaId   String @db.Uuid
+  loja     Loja   @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+
+  @@id([raffleId, lojaId])
+  @@map("raffle_lojas")
+}
+
+model Coupon {
+  id              String        @id @default(uuid()) @db.Uuid
+  codigo          String        @unique @db.VarChar(20)
+  hmacSig         String        @db.VarChar(128)
+  raffleId        String        @db.Uuid
+  raffle          Raffle        @relation(fields: [raffleId], references: [id])
+  participanteId  String        @db.Uuid
+  participante    User          @relation("CouponParticipante", fields: [participanteId], references: [id])
+  colaboradorId   String        @db.Uuid
+  colaborador     User          @relation("CouponColaborador", fields: [colaboradorId], references: [id])
+  qtdNumeros      Int
+  status          CouponStatus  @default(pendente)
+  criadoEm        DateTime      @default(now()) @db.Timestamptz()
+  resgatadoEm     DateTime?     @db.Timestamptz()
+  ipGeracao       String        @db.VarChar(45)
+
+  entries         Entry[]
+
+  @@index([codigo])
+  @@index([participanteId])
+  @@index([colaboradorId])
+  @@index([status])
+  @@map("coupons")
+}
+
+model Entry {
+  id              String   @id @default(uuid()) @db.Uuid
+  raffleId        String   @db.Uuid
+  raffle          Raffle   @relation(fields: [raffleId], references: [id])
+  participanteId  String   @db.Uuid
+  participante    User     @relation(fields: [participanteId], references: [id])
+  couponId        String   @db.Uuid
+  coupon          Coupon   @relation(fields: [couponId], references: [id])
+  numero          Int
+  criadoEm        DateTime @default(now()) @db.Timestamptz()
+
+  // RN-05: cada número é único por sorteio
+  @@unique([raffleId, numero])
+  @@index([participanteId])
+  @@index([couponId])
+  @@map("entries")
+}
+
+// Anti-fraude: tentativas de login para bloqueio por brute force
+model LoginAttempt {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id])
+  cpf       String   @db.VarChar(180)
+  ip        String   @db.VarChar(45)
+  sucesso   Boolean
+  criadoEm  DateTime @default(now()) @db.Timestamptz()
+
+  @@index([cpf, criadoEm])
+  @@index([ip, criadoEm])
+  @@map("login_attempts")
+}
