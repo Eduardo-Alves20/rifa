@@ -15,6 +15,9 @@ declare global {
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
+  // Falha rápido em vez de pendurar a requisição se o banco não responder.
+  connectionTimeoutMillis: 10000,
+  keepAlive: true,
 });
 const adapter = new PrismaPg(pool);
 
