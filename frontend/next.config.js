@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Gera um servidor Node autocontido (.next/standalone/server.js) — necessário
+  // para rodar sob o Passenger da Hostinger.
+  output: "standalone",
   experimental: {
     typedRoutes: false,
   },
