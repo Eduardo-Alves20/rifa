@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -18,11 +19,16 @@ import {
 } from "@/lib/api";
 import { formatBRL, formatDateTime } from "@/lib/format";
 
-interface PageProps {
-  params: { id: string };
+export default function RaffleDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <RaffleDetailInner />
+    </Suspense>
+  );
 }
 
-export default function RaffleDetailPage({ params }: PageProps) {
+function RaffleDetailInner() {
+  const id = useSearchParams().get("id") ?? "";
   const [detail, setDetail] = useState<RaffleAdminDetail | null>(null);
   const [map, setMap] = useState<NumbersMap | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +37,8 @@ export default function RaffleDetailPage({ params }: PageProps) {
   async function load() {
     try {
       const [d, m] = await Promise.all([
-        getRaffleAdminDetail(params.id),
-        getRaffleNumbersMap(params.id),
+        getRaffleAdminDetail(id),
+        getRaffleNumbersMap(id),
       ]);
       setDetail(d);
       setMap(m);
@@ -42,9 +48,13 @@ export default function RaffleDetailPage({ params }: PageProps) {
   }
 
   useEffect(() => {
+    if (!id) {
+      setError("Sorteio não encontrado");
+      return;
+    }
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
+  }, [id]);
 
   async function onEnd() {
     if (!detail) return;
@@ -107,7 +117,7 @@ export default function RaffleDetailPage({ params }: PageProps) {
       title={raffle.nome}
       subtitle={raffle.premio}
       action={
-        <Link href={`/sorteio/${raffle.slug}/ao-vivo`} className="btn btn-ghost">
+        <Link href={`/sorteio/ao-vivo?slug=${raffle.slug}`} className="btn btn-ghost">
           Ver ao vivo →
         </Link>
       }
@@ -205,7 +215,7 @@ export default function RaffleDetailPage({ params }: PageProps) {
             Ações
           </h2>
           <div className="row" style={{ gap: 10 }}>
-            <Link href={`/sorteio/${raffle.slug}/ao-vivo`} className="btn btn-primary">
+            <Link href={`/sorteio/ao-vivo?slug=${raffle.slug}`} className="btn btn-primary">
               Abrir tela de sorteio
             </Link>
             {raffle.status === "ativo" ? (

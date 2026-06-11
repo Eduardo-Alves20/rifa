@@ -2,21 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Gera um servidor Node autocontido (.next/standalone/server.js) — necessário
-  // para rodar sob o Passenger da Hostinger.
-  output: "standalone",
+  // Exporta o site como estático (HTML/CSS/JS em out/). Esses arquivos são
+  // servidos pelo próprio backend Express, no mesmo domínio — então as chamadas
+  // a /api/* ficam same-origin (sem CORS, sem proxy).
+  output: "export",
+  images: { unoptimized: true },
   experimental: {
     typedRoutes: false,
-  },
-  async rewrites() {
-    return [
-      // Permite chamar a API via /api/* no mesmo host em dev (CORS-free)
-      // Em produção, configure NEXT_PUBLIC_API_URL diretamente.
-      {
-        source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/:path*`,
-      },
-    ];
   },
 };
 

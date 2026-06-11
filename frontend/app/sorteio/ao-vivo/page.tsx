@@ -1,17 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
 import { getPublicRaffle, drawRaffle, endRedemption, type Raffle } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 
-interface PageProps {
-  params: { slug: string };
+export default function SorteioAoVivoPage() {
+  return (
+    <Suspense fallback={null}>
+      <SorteioAoVivoInner />
+    </Suspense>
+  );
 }
 
-export default function SorteioAoVivoPage({ params }: PageProps) {
+function SorteioAoVivoInner() {
+  const slug = useSearchParams().get("slug") ?? "";
   const [raffle, setRaffle] = useState<Raffle | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [drawing, setDrawing] = useState(false);
@@ -20,9 +26,13 @@ export default function SorteioAoVivoPage({ params }: PageProps) {
   const isAdmin = typeof window !== "undefined" && getStoredUser()?.role === "admin";
 
   useEffect(() => {
+    if (!slug) {
+      setLoadError("Sorteio não encontrado");
+      return;
+    }
     async function load() {
       try {
-        const r = await getPublicRaffle(params.slug);
+        const r = await getPublicRaffle(slug);
         setRaffle(r.raffle);
         if (r.raffle.numeroVencedor) setRevealed(r.raffle.numeroVencedor);
       } catch (err) {
@@ -32,7 +42,7 @@ export default function SorteioAoVivoPage({ params }: PageProps) {
     load();
     const intervalId = setInterval(load, 5000);
     return () => clearInterval(intervalId);
-  }, [params.slug]);
+  }, [slug]);
 
   async function onEndRedemption() {
     if (!raffle) return;

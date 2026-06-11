@@ -14,3 +14,6 @@ coverage/
 
 # Pasta de preview de design (não versionar)
 design-preview/
+
+# Helper SSH local (contém credenciais) - nunca versionar
+.ssh_run.py

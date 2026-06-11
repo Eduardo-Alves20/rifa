@@ -97,7 +97,7 @@ function Form() {
         lojaIds,
         imagemUrl: imagem ?? undefined,
       });
-      router.replace(`/admin/sorteios/${res.raffle.id}`);
+      router.replace(`/admin/sorteios/detalhe?id=${res.raffle.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao criar sorteio");
     } finally {

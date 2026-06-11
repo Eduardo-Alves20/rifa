@@ -96,7 +96,7 @@ function RaffleCard({ r }: { r: Raffle }) {
   const arrecadado = r.valorNumeroCentavos ? vendidos * r.valorNumeroCentavos : null;
 
   return (
-    <Link href={`/admin/sorteios/${r.id}`} style={{ display: "block" }}>
+    <Link href={`/admin/sorteios/detalhe?id=${r.id}`} style={{ display: "block" }}>
       <Card className="card-hover">
         <div className="list-row" style={{ alignItems: "flex-start", marginBottom: 14 }}>
           <div style={{ minWidth: 0 }}>

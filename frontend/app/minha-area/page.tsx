@@ -115,7 +115,7 @@ function ActiveRaffles() {
                   {r.totalNumeros} números · {new Date(r.dataHoraSorteio).toLocaleDateString("pt-BR")}
                 </div>
                 <Link
-                  href={`/sorteio/${r.slug}/ao-vivo`}
+                  href={`/sorteio/ao-vivo?slug=${r.slug}`}
                   className="btn btn-ghost btn-block"
                   style={{ marginTop: 12 }}
                 >
