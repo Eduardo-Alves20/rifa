@@ -9,6 +9,10 @@ RUN npm install --legacy-peer-deps
 
 # Código + build de produção
 COPY . .
+# O rewrite /api -> backend do Next é avaliado em BUILD time, então a URL da API
+# precisa estar definida aqui (não só em runtime).
+ARG NEXT_PUBLIC_API_URL=http://backend:4000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
 
 EXPOSE 3000
