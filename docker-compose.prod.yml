@@ -1,0 +1,77 @@
+# Produção (VPS) — Postgres + Backend + Frontend + Caddy (SSL automático).
+# Subir:  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sf-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sorteio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env.prod}
+      POSTGRES_DB: sorteiofacil
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sorteio -d sorteiofacil"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Sem ports: o banco só é acessível pela rede interna do compose.
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: sf-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: "postgresql://sorteio:${POSTGRES_PASSWORD}@db:5432/sorteiofacil?schema=public"
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env.prod}
+      JWT_ACCESS_EXPIRES: "15m"
+      JWT_REFRESH_EXPIRES: "30d"
+      HMAC_SECRET: ${HMAC_SECRET:?defina HMAC_SECRET no .env.prod}
+      FRONTEND_URL: ${FRONTEND_URL:-https://pitstopclub.com.br}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@pitstopclub.com.br}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD no .env.prod}
+      ADMIN_NOME: ${ADMIN_NOME:-Administrador}
+      ADMIN_CPF: ${ADMIN_CPF:-00000000000}
+      ADMIN_USUARIO: ${ADMIN_USUARIO:-admin}
+    # Sem ports: a API só é acessível pelo frontend (rede interna).
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: sf-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      # O Next encaminha /api/* para o backend pela rede interna do compose.
+      NEXT_PUBLIC_API_URL: "http://backend:4000"
+    # Sem ports: só o Caddy fica exposto.
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: sf-caddy
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

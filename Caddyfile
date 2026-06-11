@@ -1,0 +1,14 @@
+# Caddy — reverse proxy com HTTPS automático (Let's Encrypt).
+# Requer: DNS do domínio apontando para o IP da VPS + portas 80/443 abertas.
+{
+	email eduardofernandosalves@gmail.com
+}
+
+pitstopclub.com.br {
+	encode gzip
+	reverse_proxy frontend:3000
+}
+
+www.pitstopclub.com.br {
+	redir https://pitstopclub.com.br{uri} permanent
+}

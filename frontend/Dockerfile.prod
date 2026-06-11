@@ -1,0 +1,18 @@
+# Frontend (Next.js) — imagem de produção
+FROM node:20-alpine
+
+WORKDIR /app
+
+# --legacy-peer-deps: eslint@9 vs eslint-config-next@14 (pede eslint@8)
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
+
+# Código + build de produção
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+
+# next start — serve o build de produção; -H 0.0.0.0 para ser acessível no container.
+# O encaminhamento de /api -> backend é feito pelo rewrite (NEXT_PUBLIC_API_URL).
+CMD ["npm", "start", "--", "-H", "0.0.0.0", "-p", "3000"]

@@ -1,0 +1,25 @@
+# Backend (API) — imagem de produção
+FROM node:20-alpine
+
+# Prisma precisa de openssl no Alpine
+RUN apk add --no-cache openssl bash
+
+WORKDIR /app
+
+# Dependências (postinstall roda `prisma generate`)
+COPY package*.json ./
+COPY prisma ./prisma
+RUN npm install --legacy-peer-deps
+
+# Código + build (tsc -> dist)
+COPY . .
+RUN npm run build
+
+# Entrypoint: espera o banco, aplica migrations, cria admin e sobe a API
+COPY docker-entrypoint.prod.sh /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
+
+EXPOSE 4000
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["npm", "start"]
